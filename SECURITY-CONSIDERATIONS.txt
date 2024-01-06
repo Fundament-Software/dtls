@@ -7,6 +7,8 @@ SECURITY-CONSIDERATIONS.txt is more eye-catching than README.txt though
 
 for a probably-good example (in c) see https://github.com/nplab/DTLS-Examples/blob/master/src/dtls_udp_echo.c
 
+also see notes in the notion: https://www.notion.so/fundamentsoftware/Nomic-switch-to-quictls-a50b938541ca4f74b032578d27aeee23
+
 ---
 
 openssl's api documentation is here: https://www.openssl.org/docs/manmaster/man3/
