@@ -1,0 +1,69 @@
+tl;dr THIS IS NOT READY FOR THE INTERNET
+
+this document contains notes, produced during the implementation of a proof-of-concept, of things that should be given attention when studying it
+in some cases this also describes steps that should be taken when producing a publically-useful implementation based on it
+these include not just security considerations, but also design, support and implementation considerations
+SECURITY-CONSIDERATIONS.txt is more eye-catching than README.txt though
+
+for a probably-good example (in c) see https://github.com/nplab/DTLS-Examples/blob/master/src/dtls_udp_echo.c
+
+---
+
+openssl's api documentation is here: https://www.openssl.org/docs/manmaster/man3/
+boringssl's quic api documentation is here: https://commondatastorage.googleapis.com/chromium-boringssl-docs/ssl.h.html#QUIC-integration
+
+openssl supports dtls over udp (connectionless-mode, unsequenced, unreliable) or sctp (connection-mode, sequenced, reliable)
+and possibly other datagram-oriented protocols
+but support for anything besides udp is lacking basically everywhere
+(we're already only focusing on udp but it's worth noting there exist other protocols)
+
+udp is connectionless, but openssl dtls builds a kind of connection when establishing a secure communication with a peer
+therefore, udp verbs (stateless sendmsg and recvmsg) are inappropriate in dtls
+there also exist mandatory client and server roles for each connection, although an application can make several connections of either role
+(see DTLS_client and DTLS_server context methods, and SSL_set_connect_state and SSL_set_accept_state functions)
+we should probably investigate appropriate verbs for dtls
+
+udp is connectionless, but openssl dtls builds a kind of connection when establishing a secure communication with a peer
+therefore, something like accept() should be reimplemented, that creates new sockets representing connections while preserving the listening socket
+however, all these sockets are listening on the same address:port
+on a connectionless-mode protocol the os won't automatically send incoming data to the intended recipient socket
+due to this, all the connected sockets must be `connect`ed to their respective client and the listening socket must specifically look for client hellos
+(DTLSv1_listen helps here, although it might require additional cookie handling, see below about SSL_OP_COOKIE_EXCHANGE)
+or a single socket must be maintained, that distributes data to the internal connections by source address:port
+(latter is currently in use)
+we should probably verify that our implementation is correct
+
+openssl has a dgram bio that aids with handling messages from connectionless datagram sockets
+unfortunately, it isn't easily usable from luvit as the bio takes a numeric file descriptor but luv wraps libuv handles in opaque userdata
+so mem bio has to be used instead and we have to move data ourselves from the socket to the in-bio and from the out-bio to the socket
+we should probably verify that our implementation is correct, or we should try to get the fd anyway and use dgram bio
+(wip of latter is present in ./old/)
+
+openssl supports two different dtls versions: DTLSv1 and DTLSv1.2
+we should probably SSL_CTX_set_min_proto_version to DTLSv1.2
+
+there are many different default cipher lists/ciphersuites
+- openssl might have good defaults configured before setting them explicitly
+- lua-openssl uses OSSL_default_cipher_list/OSSL_default_ciphersuite, apparently meant for tls, not dtls
+- luvit uses an explicit list of tls ciphers
+we should probably investigate good dtls ciphers and explicitly configure them
+
+there are a lot of available options in SSL_CTX_set_options
+e.g. SSL_OP_COOKIE_EXCHANGE, in combination with SSL_CTX_set_cookie_generate_cb, SSL_CTX_set_cookie_verify_cb and DTLSv1_listen,
+     is useful to reduce the effect of amplification attacks
+we should probably investigate good options
+
+there are a few available verification modes in SSL_CTX_set_verification
+e.g. SSL_VERIFY_PEER requests client certificate
+we should probably investigate good verification modes
+
+there are a few available modes in SSL_CTX_set_mode
+we should probably investigate good modes (at least, whether any of them are good)
+
+openssl has dtls methods that aren't exposed in lua-openssl
+e.g. DTLS_get_data_mtu
+we should probably investigate and use these
+
+apparently ed25519 certs work with tls but not dtls
+(trying causes cipher mismatch errors)
+we should probably investigate why

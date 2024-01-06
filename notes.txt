@@ -1,0 +1,16 @@
+bio - basic i/o system
+- bio-mem - mem buffer
+- bio-dgram - takes a file handle to dgram sock
+- etc
+
+openssl.ssl.ctx_new("DTLS")
+- initialize with dtls method
+
+context has a set of methods
+- .ssl
+- - takes a pair of bios, recv and send
+- - call read and write methods, it'll do state machine stuff and call bios
+- - - if doing with mem, need to implement passing around
+- - - if doing with dgram, need to implement polling for readiness
+
+todo: expect specific server key

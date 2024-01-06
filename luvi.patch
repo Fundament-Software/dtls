@@ -1,0 +1,12 @@
+diff --git a/deps/lua-openssl.cmake b/deps/lua-openssl.cmake
+index acddbf4..f27bfdc 100644
+--- a/deps/lua-openssl.cmake
++++ b/deps/lua-openssl.cmake
+@@ -67,6 +67,7 @@ add_library(lua_openssl
+ )
+ 
+ set_target_properties(lua_openssl PROPERTIES COMPILE_FLAGS "-DLUA_LIB")
++target_compile_definitions(lua_openssl PRIVATE "LOAD_SSL_CUSTOM=else if (strcmp(meth, \"QUIC\") == 0) luaL_argerror(L, 1, \"easter egg!\")\;")
+ 
+ if (WithSharedOpenSSL)
+   target_link_libraries(lua_openssl ssl crypto)
